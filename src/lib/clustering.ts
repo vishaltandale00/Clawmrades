@@ -16,6 +16,15 @@ export async function assignIssueToCluster(
   embedding: number[],
   issueTitle: string
 ): Promise<string | null> {
+  // Guard: skip if this issue is already in a cluster (re-aggregation case)
+  const [current] = await db
+    .select({ clusterId: trackedIssues.clusterId })
+    .from(trackedIssues)
+    .where(eq(trackedIssues.id, issueId))
+    .limit(1);
+
+  if (current?.clusterId) return current.clusterId;
+
   // 1. Find similar issues above the related threshold (0.85)
   const matches = await findClusterMatches(embedding, "issue", issueId);
   if (matches.length === 0) return null;
