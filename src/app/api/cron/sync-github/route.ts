@@ -3,7 +3,7 @@ import { verifyCronSecret } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { trackedIssues, prQueue, workQueue } from "@/lib/db/schema";
 import { eq, and, count } from "drizzle-orm";
-import { listOpenIssues, listOpenPRs } from "@/lib/github";
+import { listAllOpenIssues, listAllOpenPRs, parseLinkedIssueNumbers } from "@/lib/github";
 import { getRepoConfig, getWorkQueueConfig } from "@/lib/utils";
 
 export async function GET(request: Request) {
@@ -18,169 +18,149 @@ export async function GET(request: Request) {
   let workCreated = 0;
 
   // Sync open issues
-  let issuePage = 1;
-  let hasMoreIssues = true;
+  const allIssues = await listAllOpenIssues();
 
-  while (hasMoreIssues) {
-    const issues = await listOpenIssues(issuePage, 100);
-    if (issues.length === 0) {
-      hasMoreIssues = false;
-      break;
-    }
-
-    for (const issue of issues) {
-      const [upserted] = await db
-        .insert(trackedIssues)
-        .values({
-          repoOwner: repoConfig.owner,
-          repoName: repoConfig.name,
-          issueNumber: issue.number,
+  for (const issue of allIssues) {
+    const [upserted] = await db
+      .insert(trackedIssues)
+      .values({
+        repoOwner: repoConfig.owner,
+        repoName: repoConfig.name,
+        issueNumber: issue.number,
+        title: issue.title,
+        body: issue.body ?? null,
+        htmlUrl: issue.html_url,
+        labels: (issue.labels ?? []).map((l) =>
+          typeof l === "string" ? l : l.name ?? ""
+        ),
+        state: issue.state ?? "open",
+        author: issue.user?.login ?? "unknown",
+        commentsCount: issue.comments ?? 0,
+        reactionsCount: issue.reactions?.total_count ?? 0,
+        createdAtGithub: new Date(issue.created_at),
+        updatedAtGithub: new Date(issue.updated_at),
+        syncedAt: new Date(),
+      })
+      .onConflictDoUpdate({
+        target: [
+          trackedIssues.repoOwner,
+          trackedIssues.repoName,
+          trackedIssues.issueNumber,
+        ],
+        set: {
           title: issue.title,
           body: issue.body ?? null,
-          htmlUrl: issue.html_url,
+          state: issue.state ?? "open",
           labels: (issue.labels ?? []).map((l) =>
             typeof l === "string" ? l : l.name ?? ""
           ),
-          state: issue.state ?? "open",
-          author: issue.user?.login ?? "unknown",
           commentsCount: issue.comments ?? 0,
           reactionsCount: issue.reactions?.total_count ?? 0,
-          createdAtGithub: new Date(issue.created_at),
           updatedAtGithub: new Date(issue.updated_at),
           syncedAt: new Date(),
-        })
-        .onConflictDoUpdate({
-          target: [
-            trackedIssues.repoOwner,
-            trackedIssues.repoName,
-            trackedIssues.issueNumber,
-          ],
-          set: {
-            title: issue.title,
-            body: issue.body ?? null,
-            state: issue.state ?? "open",
-            labels: (issue.labels ?? []).map((l) =>
-              typeof l === "string" ? l : l.name ?? ""
-            ),
-            commentsCount: issue.comments ?? 0,
-            reactionsCount: issue.reactions?.total_count ?? 0,
-            updatedAtGithub: new Date(issue.updated_at),
-            syncedAt: new Date(),
-            updatedAt: new Date(),
-          },
-        })
-        .returning();
+          updatedAt: new Date(),
+        },
+      })
+      .returning();
 
-      issuesSynced++;
+    issuesSynced++;
 
-      // Check if work items are needed
-      const [{ existingCount }] = await db
-        .select({ existingCount: count() })
-        .from(workQueue)
-        .where(
-          and(
-            eq(workQueue.targetId, String(upserted.id)),
-            eq(workQueue.workType, "triage_issue"),
-            eq(workQueue.targetType, "issue")
-          )
-        );
+    // Check if work items are needed
+    const [{ existingCount }] = await db
+      .select({ existingCount: count() })
+      .from(workQueue)
+      .where(
+        and(
+          eq(workQueue.targetId, String(upserted.id)),
+          eq(workQueue.workType, "triage_issue"),
+          eq(workQueue.targetType, "issue")
+        )
+      );
 
-      const needed = requiredTriages - Number(existingCount);
-      for (let i = 0; i < needed; i++) {
-        await db.insert(workQueue).values({
-          repoOwner: repoConfig.owner,
-          repoName: repoConfig.name,
-          workType: "triage_issue",
-          targetType: "issue",
-          targetId: String(upserted.id),
-          priority: 50,
-        });
-        workCreated++;
-      }
+    const needed = requiredTriages - Number(existingCount);
+    for (let i = 0; i < needed; i++) {
+      await db.insert(workQueue).values({
+        repoOwner: repoConfig.owner,
+        repoName: repoConfig.name,
+        workType: "triage_issue",
+        targetType: "issue",
+        targetId: String(upserted.id),
+        priority: 50,
+      });
+      workCreated++;
     }
-
-    issuePage++;
-    if (issues.length < 100) hasMoreIssues = false;
   }
 
   // Sync open PRs
-  let prPage = 1;
-  let hasMorePRs = true;
+  const allPRs = await listAllOpenPRs();
 
-  while (hasMorePRs) {
-    const prs = await listOpenPRs(prPage, 100);
-    if (prs.length === 0) {
-      hasMorePRs = false;
-      break;
-    }
+  for (const pr of allPRs) {
+    const linkedIssueNumbers = parseLinkedIssueNumbers(pr.body);
 
-    for (const pr of prs) {
-      const [upserted] = await db
-        .insert(prQueue)
-        .values({
-          repoOwner: repoConfig.owner,
-          repoName: repoConfig.name,
-          prNumber: pr.number,
+    const [upserted] = await db
+      .insert(prQueue)
+      .values({
+        repoOwner: repoConfig.owner,
+        repoName: repoConfig.name,
+        prNumber: pr.number,
+        title: pr.title,
+        body: pr.body ?? null,
+        htmlUrl: pr.html_url,
+        author: pr.user?.login ?? "unknown",
+        state: pr.state,
+        labels: (pr.labels ?? []).map((l) => l.name ?? ""),
+        linkedIssueNumbers,
+        createdAtGithub: new Date(pr.created_at),
+        updatedAtGithub: new Date(pr.updated_at),
+        filesChanged: (pr as Record<string, unknown>).changed_files as number ?? null,
+        linesAdded: (pr as Record<string, unknown>).additions as number ?? null,
+        linesRemoved: (pr as Record<string, unknown>).deletions as number ?? null,
+        syncedAt: new Date(),
+      })
+      .onConflictDoUpdate({
+        target: [prQueue.repoOwner, prQueue.repoName, prQueue.prNumber],
+        set: {
           title: pr.title,
           body: pr.body ?? null,
-          htmlUrl: pr.html_url,
-          author: pr.user?.login ?? "unknown",
           state: pr.state,
           labels: (pr.labels ?? []).map((l) => l.name ?? ""),
-          createdAtGithub: new Date(pr.created_at),
+          linkedIssueNumbers,
           updatedAtGithub: new Date(pr.updated_at),
           filesChanged: (pr as Record<string, unknown>).changed_files as number ?? null,
           linesAdded: (pr as Record<string, unknown>).additions as number ?? null,
           linesRemoved: (pr as Record<string, unknown>).deletions as number ?? null,
           syncedAt: new Date(),
-        })
-        .onConflictDoUpdate({
-          target: [prQueue.repoOwner, prQueue.repoName, prQueue.prNumber],
-          set: {
-            title: pr.title,
-            body: pr.body ?? null,
-            state: pr.state,
-            labels: (pr.labels ?? []).map((l) => l.name ?? ""),
-            updatedAtGithub: new Date(pr.updated_at),
-            filesChanged: (pr as Record<string, unknown>).changed_files as number ?? null,
-            linesAdded: (pr as Record<string, unknown>).additions as number ?? null,
-            linesRemoved: (pr as Record<string, unknown>).deletions as number ?? null,
-            syncedAt: new Date(),
-            updatedAt: new Date(),
-          },
-        })
-        .returning();
+          updatedAt: new Date(),
+        },
+      })
+      .returning();
 
-      prsSynced++;
+    prsSynced++;
 
-      // Check if work items are needed
-      const [{ existingCount }] = await db
-        .select({ existingCount: count() })
-        .from(workQueue)
-        .where(
-          and(
-            eq(workQueue.targetId, String(upserted.id)),
-            eq(workQueue.workType, "analyze_pr"),
-            eq(workQueue.targetType, "pr")
-          )
-        );
+    // Check if work items are needed
+    const [{ existingCount }] = await db
+      .select({ existingCount: count() })
+      .from(workQueue)
+      .where(
+        and(
+          eq(workQueue.targetId, String(upserted.id)),
+          eq(workQueue.workType, "analyze_pr"),
+          eq(workQueue.targetType, "pr")
+        )
+      );
 
-      const needed = requiredPrAnalyses - Number(existingCount);
-      for (let i = 0; i < needed; i++) {
-        await db.insert(workQueue).values({
-          repoOwner: repoConfig.owner,
-          repoName: repoConfig.name,
-          workType: "analyze_pr",
-          targetType: "pr",
-          targetId: String(upserted.id),
-          priority: 50,
-        });
-        workCreated++;
-      }
+    const needed = requiredPrAnalyses - Number(existingCount);
+    for (let i = 0; i < needed; i++) {
+      await db.insert(workQueue).values({
+        repoOwner: repoConfig.owner,
+        repoName: repoConfig.name,
+        workType: "analyze_pr",
+        targetType: "pr",
+        targetId: String(upserted.id),
+        priority: 50,
+      });
+      workCreated++;
     }
-
-    prPage++;
-    if (prs.length < 100) hasMorePRs = false;
   }
 
   return NextResponse.json({

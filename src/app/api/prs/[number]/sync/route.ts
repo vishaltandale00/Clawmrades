@@ -4,7 +4,7 @@ import { db } from "@/lib/db";
 import { prQueue, workQueue } from "@/lib/db/schema";
 import type { InferSelectModel } from "drizzle-orm";
 import { eq, and } from "drizzle-orm";
-import { getPR as fetchGithubPR, getPRFiles } from "@/lib/github";
+import { getPR as fetchGithubPR, getPRFiles, parseLinkedIssueNumbers } from "@/lib/github";
 import { getRepoConfig, getWorkQueueConfig } from "@/lib/utils";
 import { broadcast } from "@/lib/sse";
 
@@ -41,6 +41,7 @@ export async function POST(
     author: ghPR.user?.login ?? "unknown",
     state: ghPR.state,
     labels: (ghPR.labels?.map((l) => (typeof l === "string" ? l : l.name)).filter(Boolean) as string[]) ?? [],
+    linkedIssueNumbers: parseLinkedIssueNumbers(ghPR.body),
     createdAtGithub: new Date(ghPR.created_at),
     updatedAtGithub: new Date(ghPR.updated_at),
     filesChanged,

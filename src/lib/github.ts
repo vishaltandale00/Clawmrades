@@ -68,6 +68,54 @@ export async function getPRFiles(number: number) {
   return data;
 }
 
+export async function listAllOpenIssues() {
+  const allIssues: Awaited<ReturnType<typeof listOpenIssues>> = [];
+  let page = 1;
+  while (true) {
+    const ok = getOctokit();
+    const { owner, repo } = getRepo();
+    const { data } = await ok.issues.listForRepo({
+      owner,
+      repo,
+      state: "open",
+      per_page: 100,
+      page,
+    });
+    const rawCount = data.length;
+    const issues = data.filter((i) => !i.pull_request);
+    allIssues.push(...issues);
+    if (rawCount < 100) break;
+    page++;
+  }
+  return allIssues;
+}
+
+export async function listAllOpenPRs() {
+  const allPRs: Awaited<ReturnType<typeof listOpenPRs>> = [];
+  let page = 1;
+  while (true) {
+    const prs = await listOpenPRs(page, 100);
+    allPRs.push(...prs);
+    if (prs.length < 100) break;
+    page++;
+  }
+  return allPRs;
+}
+
+const LINKED_ISSUE_RE =
+  /(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?)\s+#(\d+)/gi;
+
+export function parseLinkedIssueNumbers(body: string | null | undefined): number[] {
+  if (!body) return [];
+  const numbers = new Set<number>();
+  let match: RegExpExecArray | null;
+  while ((match = LINKED_ISSUE_RE.exec(body)) !== null) {
+    numbers.add(parseInt(match[1], 10));
+  }
+  LINKED_ISSUE_RE.lastIndex = 0;
+  return Array.from(numbers);
+}
+
 export async function getRepoLabels() {
   const ok = getOctokit();
   const { owner, repo } = getRepo();
