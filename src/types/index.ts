@@ -54,7 +54,27 @@ export interface TriageSubmission {
   priority_score: number;
   priority_label: string;
   summary: string;
+  description?: string;
   confidence: number;
+}
+
+export interface SimilaritySearchRequest {
+  description: string;
+  top_k?: number;
+}
+
+export interface SimilarIssueMatch {
+  issue_id: number;
+  issue_number: number;
+  title: string;
+  score: number;
+  description: string | null;
+  state: string;
+  triage_status: string;
+}
+
+export interface SimilaritySearchResponse {
+  items: SimilarIssueMatch[];
 }
 
 export interface PrAnalysisSubmission {
@@ -64,7 +84,22 @@ export interface PrAnalysisSubmission {
   has_tests: boolean;
   has_breaking_changes: boolean;
   suggested_priority: "urgent" | "high" | "normal" | "low";
+  description?: string;
   confidence: number;
+}
+
+export interface SimilarPrMatch {
+  pr_id: number;
+  pr_number: number;
+  title: string;
+  score: number;
+  description: string | null;
+  state: string;
+  review_priority: string;
+}
+
+export interface PrSimilaritySearchResponse {
+  items: SimilarPrMatch[];
 }
 
 export interface ClusterCreateRequest {

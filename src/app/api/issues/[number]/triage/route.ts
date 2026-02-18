@@ -10,6 +10,8 @@ import {
 } from "@/lib/db/schema";
 import { eq, and, sql } from "drizzle-orm";
 import { getRepoConfig, getWorkQueueConfig, issuePriorityToWorkPriority } from "@/lib/utils";
+import { getEmbedding, upsertIssueEmbedding, EMBEDDING_MODEL } from "@/lib/pinecone";
+import { assignIssueToCluster } from "@/lib/clustering";
 
 
 export async function POST(
@@ -34,7 +36,7 @@ export async function POST(
   }
 
   const body = await request.json();
-  const { suggested_labels, priority_score, priority_label, summary, confidence } = body;
+  const { suggested_labels, priority_score, priority_label, summary, confidence, description } = body;
 
   if (
     !priority_label ||
@@ -80,6 +82,7 @@ export async function POST(
       priorityScore: priority_score,
       priorityLabel: priority_label,
       summary,
+      description: description ?? null,
       confidence,
     })
     .returning();
@@ -175,14 +178,52 @@ export async function POST(
       }
     }
 
-    // Summary: use the summary from the highest-credibility agent
+    // Summary + description: use values from the highest-credibility agent
     let bestSummary = "";
+    let bestDescription: string | null = null;
     let bestCredibility = -1;
     for (const t of allTriages) {
       const cred = getCredibility(t.agentName);
       if (cred > bestCredibility) {
         bestCredibility = cred;
         bestSummary = t.summary;
+        bestDescription = t.description;
+      }
+    }
+
+    // If no agent provided a description, fall back to any available one
+    if (!bestDescription) {
+      for (const t of allTriages) {
+        if (t.description) {
+          bestDescription = t.description;
+          break;
+        }
+      }
+    }
+
+    // Embed and store in Pinecone if we have a description
+    let embeddingStoredAt: Date | null = null;
+    if (bestDescription) {
+      try {
+        const embedding = await getEmbedding(bestDescription);
+        await upsertIssueEmbedding(issue.id, embedding, {
+          number: issue.issueNumber,
+          title: issue.title,
+          repoOwner: issue.repoOwner,
+          repoName: issue.repoName,
+          state: issue.state,
+          embeddingModel: EMBEDDING_MODEL,
+        });
+        embeddingStoredAt = new Date();
+
+        // Incrementally assign to cluster using the same embedding vector
+        try {
+          await assignIssueToCluster(issue.id, embedding, issue.title);
+        } catch (e) {
+          console.error("Cluster assignment failed for issue", issue.id, e);
+        }
+      } catch (e) {
+        console.error("Failed to store embedding for issue", issue.id, e);
       }
     }
 
@@ -194,9 +235,11 @@ export async function POST(
         priorityLabel: bestLabel,
         autoLabels,
         summary: bestSummary,
+        description: bestDescription,
         triageStatus: "triaged",
         triagedAt: new Date(),
         updatedAt: new Date(),
+        ...(embeddingStoredAt ? { embeddingStoredAt } : {}),
       })
       .where(eq(trackedIssues.id, issue.id));
 

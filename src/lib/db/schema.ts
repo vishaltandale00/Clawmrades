@@ -65,7 +65,6 @@ export const workTypeEnum = pgEnum("work_type", [
   "analyze_pr",
   "create_plan",
   "review_plan",
-  "detect_clusters",
   "discuss_plan",
   "discuss_pr",
 ]);
@@ -143,6 +142,8 @@ export const trackedIssues = pgTable(
     triageCount: integer("triage_count").default(0).notNull(),
     requiredTriages: integer("required_triages").default(3).notNull(),
     triagedAt: timestamp("triaged_at", { withTimezone: true }),
+    description: text("description"),
+    embeddingStoredAt: timestamp("embedding_stored_at", { withTimezone: true }),
     clusterId: uuid("cluster_id"),
     syncedAt: timestamp("synced_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true })
@@ -216,6 +217,8 @@ export const prQueue = pgTable(
     requiredAnalyses: integer("required_analyses").default(3).notNull(),
     maintainerDecision: varchar("maintainer_decision", { length: 20 }),
     maintainerNotes: text("maintainer_notes"),
+    description: text("description"),
+    embeddingStoredAt: timestamp("embedding_stored_at", { withTimezone: true }),
     syncedAt: timestamp("synced_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true })
       .defaultNow()
@@ -331,6 +334,7 @@ export const issueTriages = pgTable("issue_triages", {
   priorityScore: real("priority_score").notNull(),
   priorityLabel: varchar("priority_label", { length: 20 }).notNull(),
   summary: text("summary").notNull(),
+  description: text("description"),
   confidence: real("confidence").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true })
     .defaultNow()
@@ -349,6 +353,7 @@ export const prAnalyses = pgTable("pr_analyses", {
   hasTests: boolean("has_tests").notNull(),
   hasBreakingChanges: boolean("has_breaking_changes").notNull(),
   suggestedPriority: reviewPriorityEnum("suggested_priority").notNull(),
+  description: text("description"),
   confidence: real("confidence").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true })
     .defaultNow()

@@ -22,7 +22,6 @@ export async function GET(request: Request) {
         "analyze_pr",
         "create_plan",
         "review_plan",
-        "detect_clusters",
         "discuss_plan",
         "discuss_pr",
       ];

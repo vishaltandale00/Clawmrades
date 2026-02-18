@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { prQueue, prAnalyses, agents, activityLog } from "@/lib/db/schema";
 import { eq, and, sql, inArray } from "drizzle-orm";
 import { getRepoConfig } from "@/lib/utils";
+import { getEmbedding, upsertPrEmbedding, EMBEDDING_MODEL } from "@/lib/pinecone";
 
 
 const PRIORITY_ORDER = ["urgent", "high", "normal", "low"] as const;
@@ -33,6 +34,7 @@ export async function POST(
     has_breaking_changes,
     suggested_priority,
     confidence,
+    description,
   } = body;
 
   if (
@@ -82,6 +84,7 @@ export async function POST(
       hasTests: has_tests,
       hasBreakingChanges: has_breaking_changes,
       suggestedPriority: suggested_priority,
+      description: description ?? null,
       confidence,
     })
     .returning();
@@ -172,6 +175,37 @@ export async function POST(
     const aggregatedPriority = PRIORITY_ORDER[worstPriorityIndex];
     const aggregatedHasTests = testVoteWeightTrue >= testVoteWeightFalse;
 
+    // Pick best description from the highest-credibility agent
+    let bestDescription: string | null = null;
+    let bestDescCred = -1;
+    for (const a of allAnalyses) {
+      if (!a.description) continue;
+      const cred = credibilityMap.get(a.agentName) ?? 0.5;
+      if (cred > bestDescCred) {
+        bestDescCred = cred;
+        bestDescription = a.description;
+      }
+    }
+
+    // Embed and store in Pinecone if we have a description
+    let embeddingStoredAt: Date | null = null;
+    if (bestDescription) {
+      try {
+        const embedding = await getEmbedding(bestDescription);
+        await upsertPrEmbedding(pr.id, embedding, {
+          number: pr.prNumber,
+          title: pr.title,
+          repoOwner: pr.repoOwner,
+          repoName: pr.repoName,
+          state: pr.state,
+          embeddingModel: EMBEDDING_MODEL,
+        });
+        embeddingStoredAt = new Date();
+      } catch (e) {
+        console.error("Failed to store embedding for PR", pr.id, e);
+      }
+    }
+
     await db
       .update(prQueue)
       .set({
@@ -181,7 +215,9 @@ export async function POST(
         reviewPriority: aggregatedPriority,
         hasBreakingChanges: anyBreaking,
         hasTests: aggregatedHasTests,
+        description: bestDescription,
         updatedAt: new Date(),
+        ...(embeddingStoredAt ? { embeddingStoredAt } : {}),
       })
       .where(eq(prQueue.id, pr.id));
   }
