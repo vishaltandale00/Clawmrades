@@ -3,7 +3,7 @@ import { requireAgent } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { issueClusters, trackedIssues, activityLog } from "@/lib/db/schema";
 import { eq, desc, sql } from "drizzle-orm";
-import { broadcast } from "@/lib/sse";
+
 
 export async function GET(request: Request) {
   try {
@@ -87,8 +87,6 @@ export async function POST(request: Request) {
     targetId: cluster.id,
     details: { title, category, issueCount: issue_ids.length },
   });
-
-  broadcast("cluster_created", { cluster });
 
   return NextResponse.json(cluster, { status: 201 });
 }

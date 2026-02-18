@@ -6,7 +6,7 @@ import type { InferSelectModel } from "drizzle-orm";
 import { eq, and } from "drizzle-orm";
 import { getPR as fetchGithubPR, getPRFiles, parseLinkedIssueNumbers } from "@/lib/github";
 import { getRepoConfig, getWorkQueueConfig } from "@/lib/utils";
-import { broadcast } from "@/lib/sse";
+
 
 export async function POST(
   request: Request,
@@ -99,8 +99,6 @@ export async function POST(
       await db.insert(workQueue).values(workItems);
     }
   }
-
-  broadcast("pr_synced", { pr });
 
   return NextResponse.json(pr);
 }

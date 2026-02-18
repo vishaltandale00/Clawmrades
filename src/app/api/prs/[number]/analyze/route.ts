@@ -4,7 +4,7 @@ import { db } from "@/lib/db";
 import { prQueue, prAnalyses, agents, activityLog } from "@/lib/db/schema";
 import { eq, and, sql, inArray } from "drizzle-orm";
 import { getRepoConfig } from "@/lib/utils";
-import { broadcast } from "@/lib/sse";
+
 
 const PRIORITY_ORDER = ["urgent", "high", "normal", "low"] as const;
 
@@ -194,8 +194,6 @@ export async function POST(
     targetId: String(pr.id),
     details: { prNumber, riskScore: risk_score, qualityScore: quality_score },
   });
-
-  broadcast("pr_analyzed", { prId: pr.id, prNumber, analysis });
 
   return NextResponse.json(analysis, { status: 201 });
 }

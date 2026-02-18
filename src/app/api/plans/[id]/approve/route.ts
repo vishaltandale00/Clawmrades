@@ -3,7 +3,7 @@ import { requireMaintainer } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { plans, agents } from "@/lib/db/schema";
 import { eq, sql } from "drizzle-orm";
-import { broadcast } from "@/lib/sse";
+
 
 export async function POST(
   request: Request,
@@ -41,13 +41,6 @@ export async function POST(
       updatedAt: new Date(),
     })
     .where(eq(agents.name, plan.authorAgentId));
-
-  // Broadcast event
-  broadcast("plan_approved", {
-    planId: id,
-    title: plan.title,
-    author: plan.authorAgentId,
-  });
 
   return NextResponse.json(updated);
 }

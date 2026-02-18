@@ -5,7 +5,7 @@ import { trackedIssues, workQueue } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
 import { getIssue as fetchGithubIssue } from "@/lib/github";
 import { getRepoConfig, getWorkQueueConfig } from "@/lib/utils";
-import { broadcast } from "@/lib/sse";
+
 
 export async function POST(
   request: Request,
@@ -115,12 +115,6 @@ export async function POST(
 
     await db.insert(workQueue).values(workItems);
   }
-
-  broadcast("issue_synced", {
-    issueNumber,
-    title: issue.title,
-    isNew,
-  });
 
   return NextResponse.json(issue);
 }

@@ -56,18 +56,24 @@ export function ActivityFeed({
   const [items, setItems] = useState<ActivityItem[]>(initialItems);
 
   useEffect(() => {
-    const es = new EventSource("/api/activity/stream");
-
-    es.onmessage = (event) => {
+    const interval = setInterval(async () => {
       try {
-        const data = JSON.parse(event.data);
-        setItems((prev) => [data, ...prev].slice(0, 50));
+        const res = await fetch("/api/activity/stream");
+        if (res.ok) {
+          const { items: newItems } = await res.json();
+          setItems((prev) => {
+            const existingIds = new Set(prev.map((i) => i.id));
+            const fresh = newItems.filter(
+              (i: ActivityItem) => !existingIds.has(i.id)
+            );
+            return [...fresh, ...prev].slice(0, 50);
+          });
+        }
       } catch {
-        // ignore malformed events
+        // ignore network errors
       }
-    };
-
-    return () => es.close();
+    }, 10_000);
+    return () => clearInterval(interval);
   }, []);
 
   return (

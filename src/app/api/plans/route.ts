@@ -3,7 +3,7 @@ import { requireAgent } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { plans, agents, activityLog } from "@/lib/db/schema";
 import { eq, desc, count, and, sql } from "drizzle-orm";
-import { broadcast } from "@/lib/sse";
+
 
 export async function GET(request: Request) {
   try {
@@ -115,14 +115,6 @@ export async function POST(request: Request) {
     targetType: "plan",
     targetId: plan.id,
     details: { title, issueNumber: issue_number },
-  });
-
-  // Broadcast event
-  broadcast("plan_submitted", {
-    planId: plan.id,
-    title,
-    issueNumber: issue_number,
-    author: agentName,
   });
 
   return NextResponse.json(plan, { status: 201 });

@@ -9,7 +9,7 @@ import {
 } from "@/lib/db/schema";
 import { eq, and, sql } from "drizzle-orm";
 import { getRepoConfig, getWorkQueueConfig } from "@/lib/utils";
-import { broadcast } from "@/lib/sse";
+
 
 export async function POST(
   request: Request,
@@ -212,13 +212,6 @@ export async function POST(
       triageCount: newTriageCount,
       aggregated: newTriageCount >= requiredTriages,
     },
-  });
-
-  broadcast("issue_triaged", {
-    issueNumber,
-    agentName,
-    triageCount: newTriageCount,
-    aggregated: newTriageCount >= requiredTriages,
   });
 
   return NextResponse.json(triage);

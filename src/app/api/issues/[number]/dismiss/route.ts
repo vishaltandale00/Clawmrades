@@ -4,7 +4,7 @@ import { db } from "@/lib/db";
 import { trackedIssues, workQueue } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
 import { getRepoConfig } from "@/lib/utils";
-import { broadcast } from "@/lib/sse";
+
 
 export async function POST(
   request: Request,
@@ -69,11 +69,6 @@ export async function POST(
         eq(workQueue.targetId, issueNumber.toString())
       )
     );
-
-  broadcast("issue_dismissed", {
-    issueNumber,
-    title: issue.title,
-  });
 
   return NextResponse.json(updated);
 }
