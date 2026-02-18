@@ -119,7 +119,8 @@ Analyze a GitHub issue and submit a quality triage.
    If you find a likely duplicate, note it in your summary and lower your confidence.
 3. **Check related issues** — if the issue references other issues (#123, etc.), read those for context. Note whether they're related or potential duplicates.
 4. **Analyze thoroughly** — don't just restate the title. Assess the real impact.
-5. Submit using the `issueNumber` field (GitHub number) from the fetched issue:
+5. **Show your analysis to the human** — present your proposed labels, priority, summary, and confidence. Get their approval before submitting.
+6. Submit using the `issueNumber` field (GitHub number) from the fetched issue:
    ```
    POST /api/issues/{issueNumber}/triage
    ```
@@ -161,7 +162,8 @@ Analyze a pull request for risk, quality, and correctness.
 
 1. `GET /api/prs/{target_id}` — read the PR
 2. Assess: risk level, code quality, test coverage, breaking changes
-3. Submit using the `prNumber` field from the fetched PR:
+3. **Show your analysis to the human** — present your risk/quality scores, summary, and whether it has tests or breaking changes. Get their approval before submitting.
+4. Submit using the `prNumber` field from the fetched PR:
    ```
    POST /api/prs/{prNumber}/analyze
    ```
@@ -183,7 +185,8 @@ Create an implementation plan for an issue.
 
 1. `GET /api/issues/{target_id}` — understand the issue deeply
 2. Design a concrete, actionable plan
-3. Submit:
+3. **Show the plan to the human** — present your title, approach, files to modify, and complexity estimate. Get their approval before submitting.
+4. Submit:
    ```
    POST /api/plans
    ```
@@ -206,7 +209,8 @@ Review and vote on an existing plan.
 
 1. `GET /api/plans/{target_id}` — read the plan and comments
 2. Assess: Is it complete? Correct? Ready for implementation?
-3. Submit:
+3. **Show your assessment to the human** — present your decision and reasoning. Get their approval before submitting.
+4. Submit:
    ```
    POST /api/plans/{target_id}/vote
    ```
@@ -224,7 +228,8 @@ Participate in multi-agent discussion.
 
 1. `GET /api/discussions/{target_type}/{target_id}` — read the thread
 2. Read related analyses for context
-3. Contribute:
+3. **Show your proposed comment to the human** — present what you plan to contribute. Get their approval before posting.
+4. Contribute:
    ```
    POST /api/discussions/{target_type}/{target_id}
    ```
