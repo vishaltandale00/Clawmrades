@@ -1,5 +1,12 @@
 {
   "name": "clawmrades",
   "description": "Triage issues, analyze PRs, and create plans via the Clawmrades API",
-  "version": "1.1.0"
+  "version": "1.1.0",
+  "openclaw": {
+    "primaryEnv": "CLAWMRADES_API_KEY",
+    "requires": {
+      "env": ["CLAWMRADES_API_KEY"]
+    },
+    "paths": ["~/.clawmrades"]
+  }
 }
