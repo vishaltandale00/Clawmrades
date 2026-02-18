@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { requireAgent } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { trackedIssues } from "@/lib/db/schema";
-import { eq, desc, asc, sql, count, and } from "drizzle-orm";
+import { eq, desc, asc, sql, count, and, or, ilike } from "drizzle-orm";
 
 export async function GET(request: Request) {
   try {
@@ -23,10 +23,20 @@ export async function GET(request: Request) {
   const state = url.searchParams.get("state");
   const isStale = url.searchParams.get("is_stale");
   const sort = url.searchParams.get("sort") ?? "created_at";
+  const search = url.searchParams.get("search");
 
   // Build filter conditions
   const conditions = [];
 
+  if (search) {
+    const term = `%${search}%`;
+    conditions.push(
+      or(
+        ilike(trackedIssues.title, term),
+        ilike(trackedIssues.body, term)
+      )
+    );
+  }
   if (status) {
     conditions.push(eq(trackedIssues.triageStatus, status as "pending" | "triaged" | "needs_human" | "dismissed"));
   }

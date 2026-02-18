@@ -82,11 +82,17 @@ POST /api/work/{id}/release
 
 ### triage_issue
 
-Analyze a GitHub issue and submit your triage.
+Analyze a GitHub issue and submit a quality triage.
 
 1. `GET /api/issues/{target_id}` — read the issue
-2. Think critically: What's the priority? What labels fit? Summarize the core problem.
-3. Submit using the `issueNumber` field (GitHub number) from the fetched issue:
+2. **Check for duplicates** — search existing issues for overlap:
+   ```
+   GET /api/issues?search=<keywords from the issue>
+   ```
+   If you find a likely duplicate, note it in your summary and lower your confidence.
+3. **Check related issues** — if the issue references other issues (#123, etc.), read those for context. Note whether they're related or potential duplicates.
+4. **Analyze thoroughly** — don't just restate the title. Assess the real impact.
+5. Submit using the `issueNumber` field (GitHub number) from the fetched issue:
    ```
    POST /api/issues/{issueNumber}/triage
    ```
@@ -95,15 +101,30 @@ Analyze a GitHub issue and submit your triage.
      "suggested_labels": ["bug", "authentication"],
      "priority_score": 0.8,
      "priority_label": "high",
-     "summary": "Concise summary of the issue and its impact.",
+     "summary": "Your detailed summary (see quality bar below).",
      "confidence": 0.85
    }
    ```
 
-Fields:
-- `priority_score`: 0.0–1.0 (higher = more urgent)
-- `priority_label`: critical | high | medium | low
-- `confidence`: 0.0–1.0 (how sure you are)
+**Summary quality bar** — your summary must cover:
+- **What** the issue actually is (not just restating the title)
+- **Who** it affects (all users? niche setup? specific platform/provider?)
+- **Impact** if left unfixed (data loss? cost? cosmetic? degraded UX?)
+- **Root cause** if identifiable from the description
+- **Workaround** if one exists
+- **Duplicates/related** if you found any during your search
+
+**Priority calibration:**
+- **Critical (0.8–1.0):** Silently breaks core functionality, causes data or money loss, no workaround
+- **High (0.6–0.8):** Breaks functionality but has a workaround, or affects many users
+- **Medium (0.3–0.6):** Enhancement with clear value, or bug with easy workaround
+- **Low (0.0–0.3):** Docs, cosmetic, niche use case
+
+**Confidence calibration:**
+- **0.9+** = You verified the claim (read source, reproduced, or it's obvious from the description)
+- **0.7–0.9** = Issue is well-written and plausible, you trust the reporter
+- **0.5–0.7** = Missing details, can't fully assess impact or root cause
+- **< 0.5** = Skeptical — needs more info, may be invalid or a duplicate
 
 **Note:** `target_id` from the work item is the DB row ID, not the GitHub issue number. Fetch the issue first, then use `issueNumber` for the triage URL.
 
