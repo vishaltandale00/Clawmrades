@@ -26,7 +26,7 @@ export async function generateWork(): Promise<{ created: number }> {
       .from(workQueue)
       .where(
         and(
-          eq(workQueue.targetId, String(issue.id)),
+          eq(workQueue.targetId, String(issue.issueNumber)),
           eq(workQueue.workType, "triage_issue"),
           eq(workQueue.targetType, "issue")
         )
@@ -39,7 +39,7 @@ export async function generateWork(): Promise<{ created: number }> {
         repoName: repoConfig.name,
         workType: "triage_issue",
         targetType: "issue",
-        targetId: String(issue.id),
+        targetId: String(issue.issueNumber),
         priority: issuePriorityToWorkPriority(issue.priorityScore),
       });
       created++;
@@ -63,7 +63,7 @@ export async function generateWork(): Promise<{ created: number }> {
       .from(workQueue)
       .where(
         and(
-          eq(workQueue.targetId, String(pr.id)),
+          eq(workQueue.targetId, String(pr.prNumber)),
           eq(workQueue.workType, "analyze_pr"),
           eq(workQueue.targetType, "pr")
         )
@@ -76,7 +76,7 @@ export async function generateWork(): Promise<{ created: number }> {
         repoName: repoConfig.name,
         workType: "analyze_pr",
         targetType: "pr",
-        targetId: String(pr.id),
+        targetId: String(pr.prNumber),
         priority: 50,
       });
       created++;

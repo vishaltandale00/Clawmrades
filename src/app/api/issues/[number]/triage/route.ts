@@ -250,7 +250,7 @@ export async function POST(
       .set({ priority: newWorkPriority, updatedAt: new Date() })
       .where(
         and(
-          eq(workQueue.targetId, String(issue.id)),
+          eq(workQueue.targetId, String(issue.issueNumber)),
           eq(workQueue.targetType, "issue"),
           eq(workQueue.status, "available")
         )

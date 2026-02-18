@@ -75,7 +75,7 @@ export async function POST(request: Request) {
             repoName: repoConfig.name,
             workType: "triage_issue",
             targetType: "issue",
-            targetId: String(upserted.id),
+            targetId: String(upserted.issueNumber),
             priority: 50,
           });
         }
@@ -152,7 +152,7 @@ export async function POST(request: Request) {
             repoName: repoConfig.name,
             workType: "analyze_pr",
             targetType: "pr",
-            targetId: String(upserted.id),
+            targetId: String(upserted.prNumber),
             priority: 50,
           });
         }

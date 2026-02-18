@@ -227,7 +227,7 @@ export async function POST(
     agentName,
     actionType: "pr_analyzed",
     targetType: "pr",
-    targetId: String(pr.id),
+    targetId: String(prNumber),
     details: { prNumber, riskScore: risk_score, qualityScore: quality_score },
   });
 

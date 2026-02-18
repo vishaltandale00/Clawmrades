@@ -71,7 +71,7 @@ export async function GET(request: Request) {
       .from(workQueue)
       .where(
         and(
-          eq(workQueue.targetId, String(upserted.id)),
+          eq(workQueue.targetId, String(upserted.issueNumber)),
           eq(workQueue.workType, "triage_issue"),
           eq(workQueue.targetType, "issue")
         )
@@ -84,7 +84,7 @@ export async function GET(request: Request) {
         repoName: repoConfig.name,
         workType: "triage_issue",
         targetType: "issue",
-        targetId: String(upserted.id),
+        targetId: String(upserted.issueNumber),
         priority: issuePriorityToWorkPriority(upserted.priorityScore),
       });
       workCreated++;
@@ -143,7 +143,7 @@ export async function GET(request: Request) {
       .from(workQueue)
       .where(
         and(
-          eq(workQueue.targetId, String(upserted.id)),
+          eq(workQueue.targetId, String(upserted.prNumber)),
           eq(workQueue.workType, "analyze_pr"),
           eq(workQueue.targetType, "pr")
         )
@@ -156,7 +156,7 @@ export async function GET(request: Request) {
         repoName: repoConfig.name,
         workType: "analyze_pr",
         targetType: "pr",
-        targetId: String(upserted.id),
+        targetId: String(upserted.prNumber),
         priority: 50,
       });
       workCreated++;

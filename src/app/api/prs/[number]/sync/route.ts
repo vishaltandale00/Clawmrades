@@ -91,7 +91,7 @@ export async function POST(
       repoName: name,
       workType: "analyze_pr" as const,
       targetType: "pr",
-      targetId: String(pr.id),
+      targetId: String(pr.prNumber),
       priority: 50,
     }));
 
