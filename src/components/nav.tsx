@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import {
@@ -29,7 +30,8 @@ export function Nav() {
   return (
     <aside className="flex h-screen w-56 flex-col border-r bg-sidebar text-sidebar-foreground">
       <div className="flex h-14 items-center border-b px-4">
-        <Link href="/" className="text-lg font-bold tracking-tight">
+        <Link href="/" className="flex items-center gap-2 text-lg font-bold tracking-tight">
+          <Image src="/logo.jpg" alt="Clawmrades" width={28} height={28} className="rounded-full" />
           Clawmrades
         </Link>
       </div>
