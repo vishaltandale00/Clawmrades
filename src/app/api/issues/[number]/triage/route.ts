@@ -6,9 +6,10 @@ import {
   issueTriages,
   agents,
   activityLog,
+  workQueue,
 } from "@/lib/db/schema";
 import { eq, and, sql } from "drizzle-orm";
-import { getRepoConfig, getWorkQueueConfig } from "@/lib/utils";
+import { getRepoConfig, getWorkQueueConfig, issuePriorityToWorkPriority } from "@/lib/utils";
 
 
 export async function POST(
@@ -194,9 +195,23 @@ export async function POST(
         autoLabels,
         summary: bestSummary,
         triageStatus: "triaged",
+        triagedAt: new Date(),
         updatedAt: new Date(),
       })
       .where(eq(trackedIssues.id, issue.id));
+
+    // Boost priority of remaining available work items for this issue
+    const newWorkPriority = issuePriorityToWorkPriority(avgPriorityScore);
+    await db
+      .update(workQueue)
+      .set({ priority: newWorkPriority, updatedAt: new Date() })
+      .where(
+        and(
+          eq(workQueue.targetId, String(issue.id)),
+          eq(workQueue.targetType, "issue"),
+          eq(workQueue.status, "available")
+        )
+      );
   }
 
   // Log activity

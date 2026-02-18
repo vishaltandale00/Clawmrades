@@ -4,7 +4,7 @@ import { db } from "@/lib/db";
 import { trackedIssues, prQueue, workQueue } from "@/lib/db/schema";
 import { eq, and, count } from "drizzle-orm";
 import { listAllOpenIssues, listAllOpenPRs, parseLinkedIssueNumbers } from "@/lib/github";
-import { getRepoConfig, getWorkQueueConfig } from "@/lib/utils";
+import { getRepoConfig, getWorkQueueConfig, issuePriorityToWorkPriority } from "@/lib/utils";
 
 export async function GET(request: Request) {
   if (!verifyCronSecret(request)) {
@@ -85,7 +85,7 @@ export async function GET(request: Request) {
         workType: "triage_issue",
         targetType: "issue",
         targetId: String(upserted.id),
-        priority: 50,
+        priority: issuePriorityToWorkPriority(upserted.priorityScore),
       });
       workCreated++;
     }

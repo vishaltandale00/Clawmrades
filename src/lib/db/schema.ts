@@ -142,6 +142,7 @@ export const trackedIssues = pgTable(
       .notNull(),
     triageCount: integer("triage_count").default(0).notNull(),
     requiredTriages: integer("required_triages").default(3).notNull(),
+    triagedAt: timestamp("triaged_at", { withTimezone: true }),
     clusterId: uuid("cluster_id"),
     syncedAt: timestamp("synced_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true })

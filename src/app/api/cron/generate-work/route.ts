@@ -3,7 +3,7 @@ import { verifyCronSecret } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { trackedIssues, prQueue, workQueue } from "@/lib/db/schema";
 import { eq, and, lt, count, sql } from "drizzle-orm";
-import { getRepoConfig, getWorkQueueConfig } from "@/lib/utils";
+import { getRepoConfig, getWorkQueueConfig, issuePriorityToWorkPriority } from "@/lib/utils";
 
 export async function GET(request: Request) {
   if (!verifyCronSecret(request)) {
@@ -47,7 +47,7 @@ export async function GET(request: Request) {
         workType: "triage_issue",
         targetType: "issue",
         targetId: String(issue.id),
-        priority: 50,
+        priority: issuePriorityToWorkPriority(issue.priorityScore),
       });
       created++;
     }

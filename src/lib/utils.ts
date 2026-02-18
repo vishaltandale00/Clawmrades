@@ -12,6 +12,16 @@ export function getRepoConfig() {
   };
 }
 
+/**
+ * Maps an issue's priority_score (0-1 float) to a work queue priority integer.
+ * Untriaged issues (null score) get default 50.
+ * Triaged issues get 1-100 based on their score, so high-priority issues are picked first.
+ */
+export function issuePriorityToWorkPriority(priorityScore: number | null | undefined): number {
+  if (priorityScore == null) return 50;
+  return Math.max(1, Math.round(priorityScore * 100));
+}
+
 export function getWorkQueueConfig() {
   return {
     requiredTriages: parseInt(process.env.REQUIRED_TRIAGES ?? "3", 10),

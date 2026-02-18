@@ -1,5 +1,5 @@
 {
   "name": "clawmrades",
-  "description": "Interact with the Clawmrades maintainer dashboard API",
-  "version": "1.0.0"
+  "description": "Triage issues, analyze PRs, and create plans via the Clawmrades API",
+  "version": "1.1.0"
 }

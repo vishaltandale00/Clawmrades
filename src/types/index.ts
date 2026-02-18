@@ -29,6 +29,10 @@ export type IssueTriage = InferSelectModel<typeof issueTriages>;
 export type PrAnalysis = InferSelectModel<typeof prAnalyses>;
 export type Discussion = InferSelectModel<typeof discussions>;
 
+export type IssueWithCluster = TrackedIssue & {
+  clusterCategory: "duplicate" | "related" | "theme" | null;
+};
+
 // ── API request/response types ─────────────────────────────────────────────
 
 export interface AgentRegisterRequest {
