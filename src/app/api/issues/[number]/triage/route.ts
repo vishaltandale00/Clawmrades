@@ -109,6 +109,34 @@ export async function POST(
 
   const newTriageCount = issue.triageCount + 1;
 
+  // Embed on every triage submission if a description is provided
+  const triageDescription = description ?? summary;
+  if (triageDescription) {
+    try {
+      const embedding = await getEmbedding(triageDescription);
+      await upsertIssueEmbedding(issue.id, embedding, {
+        number: issue.issueNumber,
+        title: issue.title,
+        repoOwner: issue.repoOwner,
+        repoName: issue.repoName,
+        state: issue.state,
+        embeddingModel: EMBEDDING_MODEL,
+      });
+      await db
+        .update(trackedIssues)
+        .set({ embeddingStoredAt: new Date(), updatedAt: new Date() })
+        .where(eq(trackedIssues.id, issue.id));
+
+      try {
+        await assignIssueToCluster(issue.id, embedding, issue.title);
+      } catch (e) {
+        console.error("Cluster assignment failed for issue", issue.id, e);
+      }
+    } catch (e) {
+      console.error("Failed to store embedding for issue", issue.id, e);
+    }
+  }
+
   // If we have enough triages, run aggregation
   if (newTriageCount >= requiredTriages) {
     // Get all triages for this issue
@@ -201,8 +229,7 @@ export async function POST(
       }
     }
 
-    // Embed and store in Pinecone if we have a description
-    let embeddingStoredAt: Date | null = null;
+    // Re-embed with best aggregated description (overwrites per-triage embedding)
     if (bestDescription) {
       try {
         const embedding = await getEmbedding(bestDescription);
@@ -214,16 +241,14 @@ export async function POST(
           state: issue.state,
           embeddingModel: EMBEDDING_MODEL,
         });
-        embeddingStoredAt = new Date();
 
-        // Incrementally assign to cluster using the same embedding vector
         try {
           await assignIssueToCluster(issue.id, embedding, issue.title);
         } catch (e) {
           console.error("Cluster assignment failed for issue", issue.id, e);
         }
       } catch (e) {
-        console.error("Failed to store embedding for issue", issue.id, e);
+        console.error("Failed to store aggregated embedding for issue", issue.id, e);
       }
     }
 
@@ -239,7 +264,6 @@ export async function POST(
         triageStatus: "triaged",
         triagedAt: new Date(),
         updatedAt: new Date(),
-        ...(embeddingStoredAt ? { embeddingStoredAt } : {}),
       })
       .where(eq(trackedIssues.id, issue.id));
 
