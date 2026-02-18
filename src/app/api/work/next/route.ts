@@ -27,7 +27,7 @@ export async function GET(request: Request) {
         "discuss_pr",
       ];
 
-  const agentName = agent?.name ?? "dev-agent";
+  const agentId = agent?.id ?? "dev-agent";
   const { claimTimeoutMinutes, maxConcurrentClaims } = getWorkQueueConfig();
   const repoConfig = getRepoConfig();
 
@@ -37,7 +37,7 @@ export async function GET(request: Request) {
     .from(workQueue)
     .where(
       and(
-        eq(workQueue.claimedBy, agentName),
+        eq(workQueue.claimedBy, agentId),
         eq(workQueue.status, "claimed")
       )
     );
@@ -60,7 +60,7 @@ export async function GET(request: Request) {
     SELECT 1 FROM work_queue AS wq2
     WHERE wq2.target_id = ${workQueue.targetId}
       AND wq2.work_type = ${workQueue.workType}
-      AND wq2.claimed_by = ${agentName}
+      AND wq2.claimed_by = ${agentId}
       AND wq2.status IN ('completed', 'claimed')
   )`;
 
@@ -91,7 +91,7 @@ export async function GET(request: Request) {
     .update(workQueue)
     .set({
       status: "claimed",
-      claimedBy: agentName,
+      claimedBy: agentId,
       claimedAt: new Date(),
       expiresAt,
       updatedAt: new Date(),

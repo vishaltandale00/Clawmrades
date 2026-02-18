@@ -12,7 +12,7 @@ export async function GET(request: Request) {
     return response as NextResponse;
   }
 
-  const agentName = agent?.name ?? "dev-agent";
+  const agentId = agent?.id ?? "dev-agent";
 
   const items = await db
     .select()
@@ -20,7 +20,7 @@ export async function GET(request: Request) {
     .where(
       and(
         eq(workQueue.status, "claimed"),
-        eq(workQueue.claimedBy, agentName)
+        eq(workQueue.claimedBy, agentId)
       )
     );
 

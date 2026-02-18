@@ -30,9 +30,9 @@ export async function POST(
     );
   }
 
-  const agentName = agent?.name ?? "dev-agent";
+  const agentId = agent?.id ?? "dev-agent";
 
-  if (item.claimedBy !== agentName) {
+  if (item.claimedBy !== agentId) {
     return NextResponse.json(
       { error: "Work item is not claimed by you" },
       { status: 403 }
