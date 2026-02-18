@@ -1,21 +1,9 @@
 import { NextResponse } from "next/server";
-import { createHmac, timingSafeEqual } from "crypto";
 import { db } from "@/lib/db";
 import { trackedIssues, prQueue, workQueue } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
 import { getRepoConfig, getWorkQueueConfig } from "@/lib/utils";
-
-function verifyWebhookSignature(payload: string, signature: string): boolean {
-  const secret = process.env.GITHUB_WEBHOOK_SECRET;
-  if (!secret) return process.env.ENVIRONMENT !== "production";
-  const expected =
-    "sha256=" + createHmac("sha256", secret).update(payload).digest("hex");
-  try {
-    return timingSafeEqual(Buffer.from(signature), Buffer.from(expected));
-  } catch {
-    return false;
-  }
-}
+import { verifyWebhookSignature } from "@/lib/webhook";
 
 export async function POST(request: Request) {
   const payload = await request.text();
