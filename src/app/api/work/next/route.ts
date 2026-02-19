@@ -76,7 +76,39 @@ export async function GET(request: Request) {
         excludeSubquery
       )
     )
-    .orderBy(desc(workQueue.priority), asc(workQueue.createdAt))
+    .orderBy(
+      sql`(
+        CASE
+          WHEN ${workQueue.workType} = 'triage_issue' THEN (
+            SELECT CAST(ti.triage_count AS FLOAT) / NULLIF(ti.required_triages, 0)
+            FROM tracked_issues ti
+            WHERE ti.issue_number = (
+              CASE WHEN ${workQueue.targetId} ~ '^[0-9]+$'
+                   THEN CAST(${workQueue.targetId} AS INTEGER)
+                   ELSE NULL END
+            )
+              AND ti.repo_owner = ${workQueue.repoOwner}
+              AND ti.repo_name = ${workQueue.repoName}
+            LIMIT 1
+          )
+          WHEN ${workQueue.workType} = 'analyze_pr' THEN (
+            SELECT CAST(p.analysis_count AS FLOAT) / NULLIF(p.required_analyses, 0)
+            FROM pr_queue p
+            WHERE p.pr_number = (
+              CASE WHEN ${workQueue.targetId} ~ '^[0-9]+$'
+                   THEN CAST(${workQueue.targetId} AS INTEGER)
+                   ELSE NULL END
+            )
+              AND p.repo_owner = ${workQueue.repoOwner}
+              AND p.repo_name = ${workQueue.repoName}
+            LIMIT 1
+          )
+          ELSE 0
+        END
+      ) DESC NULLS LAST`,
+      desc(workQueue.priority),
+      asc(workQueue.createdAt)
+    )
     .limit(1);
 
   if (!available) {
